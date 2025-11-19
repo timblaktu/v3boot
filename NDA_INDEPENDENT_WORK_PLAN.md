@@ -1,10 +1,18 @@
 # V3000 Bootloader: NDA-Independent Work Plan
 
+> **Important**: This document contains assumptions that require verification. See [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) for:
+> - Which assumptions are high-risk
+> - More conservative estimates
+> - Foundational explanations for teams new to AMD
+
 ## Executive Summary
 
-Deep research into Oxide Computer's repositories reveals that **85-90% of the bootloader project can proceed without AMD NDA access**. The phbl architecture is 98% reusable with only ~35 lines of code changes needed. AMD uses consistent FCH (Fusion Controller Hub) addresses across platforms, so UART and GPIO addresses are likely identical. This document outlines actionable work that can begin immediately.
+Deep research into Oxide Computer's repositories reveals that **70-80% of the bootloader project can proceed without AMD NDA access**. The phbl architecture is largely reusable, though platform-specific code (100-300 lines) requires verification of V3000 addresses and configuration. AMD typically uses consistent FCH addresses across platforms, but this must be confirmed for V3000.
 
-**Key Correction**: Previous estimates were too conservative. Platform comparison shows V3000 (Rembrandt-based, Zen 3) shares far more with EPYC Milan than initially assumed.
+**Key Assumptions Requiring Verification**:
+- V3000 CPUID is Family 0x19, Model 0x40-0x4F (based on Rembrandt - may differ for embedded)
+- UART at 0xFEDC_9000, GPIO at 0xFED8_0000 (standard FCH addresses - unconfirmed for V3000)
+- Pin configuration same as EPYC (unlikely - FP7r2 package differs from SP3/SP5)
 
 ---
 

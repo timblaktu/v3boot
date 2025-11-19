@@ -1,5 +1,7 @@
 # AMD EPYC vs Ryzen Embedded V3000: Platform Comparison
 
+> **Note on Assumptions**: V3000 details in this document are inferred from Rembrandt mobile (same silicon family) and public product briefs. Key values like CPUID model, UART addresses, and pin assignments require verification with AMD documentation or hardware testing. See [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) for risk assessment.
+
 This document provides a detailed comparison between AMD's EPYC server platform (used by Oxide Computer) and the Ryzen Embedded V3000 platform, with specific focus on bootloader development implications.
 
 ---

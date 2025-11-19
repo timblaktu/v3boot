@@ -15,7 +15,8 @@ Minimal Rust bootloader for AMD Ryzen Embedded V3000 (V3C18I) platform, followin
 
 | Document | Description |
 |----------|-------------|
-| [NDA_INDEPENDENT_WORK_PLAN.md](NDA_INDEPENDENT_WORK_PLAN.md) | Actionable implementation plan (85-90% completable without NDA) |
+| [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) | **Start here** - Assumptions, caveats, glossary |
+| [NDA_INDEPENDENT_WORK_PLAN.md](NDA_INDEPENDENT_WORK_PLAN.md) | Actionable implementation plan (70-80% without NDA) |
 | [PLATFORM_COMPARISON.md](PLATFORM_COMPARISON.md) | EPYC vs V3000 architecture analysis |
 | [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) | Visual system documentation (20+ Mermaid diagrams) |
 | [COMMUNITY_INSIGHTS.md](COMMUNITY_INSIGHTS.md) | GitHub forks, issues, ecosystem research |
@@ -125,3 +126,34 @@ Power On
 ## License
 
 See individual Oxide repositories for license terms (MPL-2.0).
+
+---
+
+## For Teams New to AMD Boot Architecture
+
+**Start here**: Read [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) first. It explains:
+- Foundational concepts (PSP, AGESA, FCH, APCB/APOB)
+- Which assumptions need verification
+- Corrected (more conservative) estimates
+- Glossary of terms
+
+**Recommended reading order**:
+1. CRITICAL_REVIEW.md - understand caveats and context
+2. PLATFORM_COMPARISON.md - EPYC vs V3000 differences
+3. ARCHITECTURE_DIAGRAMS.md - visual system overview
+4. NDA_INDEPENDENT_WORK_PLAN.md - actionable next steps
+
+---
+
+## Quick Glossary
+
+| Term | Meaning |
+|------|---------|
+| PSP | Platform Security Processor - ARM core that runs before x86 |
+| AGESA | AMD's proprietary CPU/memory initialization code |
+| FCH | Fusion Controller Hub - I/O controller with UART, GPIO |
+| APCB | Board configuration input to AGESA |
+| APOB | Memory training results output from AGESA |
+| ABL | AGESA Boot Loader stages (0-7) running on PSP |
+
+See [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) for complete glossary.
