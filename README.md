@@ -20,6 +20,7 @@ Minimal Rust bootloader for AMD Ryzen Embedded V3000 (V3C18I) platform, followin
 | [PLATFORM_COMPARISON.md](PLATFORM_COMPARISON.md) | EPYC vs V3000 architecture analysis |
 | [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) | Visual system documentation (20+ Mermaid diagrams) |
 | [COMMUNITY_INSIGHTS.md](COMMUNITY_INSIGHTS.md) | GitHub forks, issues, ecosystem research |
+| [YOCTO_AMD_RESEARCH.md](YOCTO_AMD_RESEARCH.md) | Yocto/OpenEmbedded analysis (alternative approach) |
 
 ### Reference Documents
 
@@ -45,9 +46,11 @@ Minimal Rust bootloader for AMD Ryzen Embedded V3000 (V3C18I) platform, followin
 
 ### Code Reusability
 
-- **98% of phbl code is reusable** - Only ~35 lines need V3000-specific changes
-- **FCH addresses are standardized** - UART (0xFEDC_9000), GPIO (0xFED8_0000)
-- **CPUID is known** - Family 0x19, Model 0x40-0x4F (Rembrandt-based)
+- **80-85% of phbl code is reusable** - Platform-specific changes estimated at 100-300 lines
+- **FCH addresses likely standardized** - UART (0xFEDC_9000), GPIO (0xFED8_0000) - *needs verification*
+- **CPUID expected** - Family 0x19, Model 0x40-0x4F (Rembrandt-based) - *verify on hardware*
+
+> **Note**: See [CRITICAL_REVIEW.md](CRITICAL_REVIEW.md) for assumptions requiring verification and corrected estimates.
 
 ### Hard Blockers (NDA Required)
 
