@@ -24,10 +24,12 @@ Fork of Oxide's minimal Rust bootloader, adapted for AMD Ryzen Embedded V3000 (V
 - [ ] Test transitions in QEMU before hardware
 
 ### P2: V3000-Specific Adaptations
-- [ ] Replace Milan UART addresses with V3000 FCH UART
-- [ ] Update IO mux configuration for V3000 pin routing
-- [ ] Implement V3000 memory map (different reserved regions)
-- [ ] Add V3000 MSR definitions if different from Milan
+- [ ] Add V3000 CPUID detection (Family 0x19, Model 0x40-0x4F)
+- [ ] Verify UART pins for FP7r2 package (likely same: 135-138)
+- [ ] Verify UART clock (30 MHz or 48 MHz)
+- [ ] UART/GPIO addresses likely same as EPYC (0xFEDC_9000, 0xFED8_0000)
+
+**Note**: Platform comparison shows V3000 uses same AMD FCH as EPYC. Most addresses are standardized across AMD platforms. Changes are minimal (~35 lines).
 
 ### P3: Memory Management
 - [ ] Port page table construction algorithm (keep 1GiB/2MiB optimization)
@@ -100,11 +102,22 @@ target = "x86_64-v3000-none-elf"
 5. **Performance**: Profile with timestamps
 
 ## Critical Unknowns (Need AMD NDA)
-- Exact memory map with PSP reserved regions
-- APOB structure location and format
-- First-stage loader interface specification
-- V3000-specific initialization requirements
-- Any silicon errata workarounds needed
+
+**Hard Blockers (Cannot Boot Without):**
+- PSP firmware blobs (EmbeddedPi branch)
+- AGESA binary (FP7r2)
+- APCB template from AMD FAE
+
+**Verification Needed:**
+- UART pin assignments for FP7r2 package
+- UART clock frequency (30 or 48 MHz)
+- Any silicon errata workarounds
+
+**Likely Known (Based on Platform Comparison):**
+- CPUID: Family 0x19, Model 0x40-0x4F
+- UART address: 0xFEDC_9000 (AMD FCH standard)
+- GPIO address: 0xFED8_0000 (AMD FCH standard)
+- Boot flow: Same PSP→ABL→x86 as EPYC
 
 ## Success Criteria
 - Boots in <1 second from handoff
