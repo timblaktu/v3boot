@@ -13,6 +13,10 @@ This document provides comprehensive visual documentation of the V3000 bootloade
 5. [Memory Layout](#5-memory-layout)
 6. [Build and Flash Pipeline](#6-build-and-flash-pipeline)
 7. [Handoff Protocol Details](#7-handoff-protocol-details)
+8. [Community Tools and Analysis Workflow](#8-community-tools-and-analysis-workflow)
+9. [Reference Implementation Sources](#9-reference-implementation-sources)
+10. [Future Architecture: AMD openSIL](#10-future-architecture-amd-opensil)
+11. [Complete Development Workflow](#11-complete-development-workflow)
 
 ---
 
@@ -884,3 +888,329 @@ Key takeaways:
 - **Bit 11 protocol** is essential for kernel page ownership transfer
 - **Total boot time target** is under 1 second
 - **Extension points** are clearly defined for adding V3000 support
+
+---
+
+## 8. Community Tools and Analysis Workflow
+
+### 8.1 Firmware Analysis Pipeline
+
+```mermaid
+flowchart LR
+    subgraph "Input Sources"
+        VENDOR[Vendor BIOS<br/>SolidRun]
+        EXISTING[Existing Flash<br/>Dump from board]
+    end
+
+    subgraph "Analysis Tools"
+        PSPTOOL[PSPTool<br/>Directory analysis]
+        PSPEMU[PSPEmu<br/>PSP emulation]
+        SPLOADER[AMD-SP-Loader<br/>Binary Ninja]
+    end
+
+    subgraph "Extracted Data"
+        PSP_DIR[PSP Directory<br/>Entry types]
+        APCB_DATA[APCB Structure<br/>Tokens, values]
+        ADDR[Addresses<br/>UART, GPIO, Memory]
+        GEN_ID[Generation ID<br/>Detection bits]
+    end
+
+    subgraph "V3000 Config"
+        CONFIG[v3000-config.toml<br/>Platform definition]
+        CPUID[CPUID Pattern<br/>0x19/0x40-0x4F]
+        PINS[Pin Configuration<br/>UART mux values]
+    end
+
+    VENDOR --> PSPTOOL
+    EXISTING --> PSPTOOL
+
+    PSPTOOL --> PSP_DIR
+    PSPTOOL --> APCB_DATA
+    PSPTOOL --> ADDR
+    PSPTOOL --> GEN_ID
+
+    PSPTOOL --> PSPEMU
+    PSPEMU --> SPLOADER
+
+    PSP_DIR --> CONFIG
+    APCB_DATA --> CONFIG
+    ADDR --> PINS
+    GEN_ID --> CPUID
+
+    classDef tool fill:#bbdefb,stroke:#1565c0
+    classDef data fill:#fff9c4,stroke:#f9a825
+    classDef output fill:#c8e6c9,stroke:#2e7d32
+
+    class PSPTOOL,PSPEMU,SPLOADER tool
+    class PSP_DIR,APCB_DATA,ADDR,GEN_ID data
+    class CONFIG,CPUID,PINS output
+```
+
+### 8.2 Processor Generation Detection Flow
+
+```mermaid
+flowchart TD
+    START[CPUID Instruction] --> READ[Read Family/Model]
+
+    READ --> CHECK{Match Pattern}
+
+    CHECK -->|0x17, 0x00-0x0F| NAPLES[Naples<br/>EPYC 7001]
+    CHECK -->|0x17, 0x30-0x3F| ROME[Rome<br/>EPYC 7002]
+    CHECK -->|0x19, 0x00-0x0F| MILAN[Milan<br/>EPYC 7003<br/>bits: 0xfc]
+    CHECK -->|0x19, 0x10-0x1F| GENOA[Genoa<br/>EPYC 9004<br/>bits: 0xfe]
+    CHECK -->|0x1A, 0x00-0x1F| TURIN[Turin<br/>EPYC 9005<br/>bits: 0xe3]
+    CHECK -->|0x19, 0x40-0x4F| V3000[V3000<br/>Rembrandt<br/>bits: TBD]
+    CHECK -->|Other| UNKNOWN[Unknown<br/>Processor]
+
+    NAPLES --> GPIO_CFG[Load GPIO Config]
+    ROME --> GPIO_CFG
+    MILAN --> GPIO_CFG
+    GENOA --> GPIO_CFG
+    TURIN --> GPIO_CFG
+    V3000 --> GPIO_CFG
+
+    GPIO_CFG --> UART_INIT[Initialize UART<br/>Set Pin Mux]
+
+    classDef known fill:#c8e6c9,stroke:#2e7d32
+    classDef new fill:#fff9c4,stroke:#f9a825
+    classDef unknown fill:#ffcdd2,stroke:#c62828
+
+    class NAPLES,ROME,MILAN,GENOA,TURIN known
+    class V3000 new
+    class UNKNOWN unknown
+```
+
+### 8.3 Pin Mux Configuration (Critical)
+
+```mermaid
+sequenceDiagram
+    participant BOOT as Bootloader
+    participant CPUID as CPUID Check
+    participant GPIO as GPIO Registers
+    participant MUX as IO Mux
+    participant UART as UART
+
+    Note over BOOT,UART: Pin Mux Must Be Explicit<br/>(Cannot Trust Reset Defaults)
+
+    BOOT->>CPUID: Get processor family/model
+    CPUID-->>BOOT: (0x19, 0x40-0x4F)
+
+    BOOT->>BOOT: Select V3000 pin config
+
+    loop For each UART pin
+        BOOT->>GPIO: Read GPIO base (0xFED80000)
+        BOOT->>MUX: Calculate mux offset (+0x0D00)
+        BOOT->>MUX: Set function (F0 = UART)
+    end
+
+    Note right of BOOT: Pins 135-138 (verify)<br/>CTS, RXD, RTS, TXD
+
+    BOOT->>UART: Initialize 16550
+    UART-->>BOOT: Ready
+
+    Note over BOOT,UART: Issue phbl#48: Genoa pins<br/>defaulted to GPIO, not UART
+```
+
+---
+
+## 9. Reference Implementation Sources
+
+### 9.1 Code Reference Hierarchy
+
+```mermaid
+graph TB
+    subgraph "Primary Reference"
+        PHBL[Oxide phbl<br/>Direct port source]
+    end
+
+    subgraph "Architecture Reference"
+        COREBOOT[Coreboot Rembrandt<br/>src/soc/amd/rembrandt]
+        MENDOCINO[Coreboot Mendocino<br/>Derived from Rembrandt]
+    end
+
+    subgraph "Integration Reference"
+        THREMDEB[3mdeb V1000/R1000<br/>AGESA+EDK2 work]
+        AHIB[amd-host-image-builder<br/>Image creation]
+    end
+
+    subgraph "Analysis Reference"
+        PSPREVERSE[PSPReverse<br/>Firmware analysis]
+        AMDBLOBS[amd/firmware_binaries<br/>Reference blobs]
+    end
+
+    subgraph "V3000 Bootloader"
+        V3BOOT[v3000-bootloader]
+    end
+
+    PHBL -->|Core code| V3BOOT
+    COREBOOT -->|FCH init patterns| V3BOOT
+    THREMDEB -->|AGESA integration| V3BOOT
+    AHIB -->|Image building| V3BOOT
+    PSPREVERSE -->|Firmware analysis| V3BOOT
+
+    classDef primary fill:#c8e6c9,stroke:#2e7d32,stroke-width:3px
+    classDef reference fill:#bbdefb,stroke:#1565c0
+    classDef analysis fill:#fff9c4,stroke:#f9a825
+
+    class PHBL primary
+    class COREBOOT,MENDOCINO,THREMDEB,AHIB reference
+    class PSPREVERSE,AMDBLOBS analysis
+```
+
+### 9.2 APCB Structure Variations
+
+```mermaid
+graph TB
+    subgraph "APCB Type ID"
+        TYPE[Same Type ID<br/>e.g., DimmInfoSmbusElement]
+    end
+
+    subgraph "Structure Variations"
+        MILAN_S[Milan Structure<br/>Old fields]
+        GENOA_S[Genoa/Turin Structure<br/>New fields:<br/>- Socket/Channel/DIMM<br/>- BusID ranges<br/>- I2C/SMBUS/I3C]
+        V3000_S[V3000 Structure<br/>TBD - may differ]
+    end
+
+    TYPE --> MILAN_S
+    TYPE --> GENOA_S
+    TYPE --> V3000_S
+
+    Note1[Issue amd-apcb#157:<br/>AMD reuses Type IDs<br/>with different layouts]
+
+    classDef warning fill:#fff9c4,stroke:#f9a825,stroke-width:2px
+    class TYPE,MILAN_S,GENOA_S,V3000_S warning
+```
+
+---
+
+## 10. Future Architecture: AMD openSIL
+
+### 10.1 Timeline and Roadmap
+
+```mermaid
+gantt
+    title AMD openSIL Roadmap
+    dateFormat YYYY
+    axisFormat %Y
+
+    section Proof of Concept
+    Genoa POC           :done, 2022, 2023
+    Turin/Phoenix POC   :done, 2023, 2024
+
+    section Code Release
+    Phoenix Code        :active, 2024, 2025
+    Turin Code          :2025, 2026
+
+    section Production
+    Venice (Zen 6)      :2026, 2027
+    Medusa (Zen 6)      :2027, 2028
+
+    section V3000 Project
+    V3000 (Zen 3)       :milestone, 2024, 2025
+```
+
+### 10.2 V3000 Strategy vs openSIL
+
+```mermaid
+graph LR
+    subgraph "Current: V3000 (Zen 3)"
+        V3_AGESA[Binary AGESA<br/>EmbeddedPi FP7r2]
+        V3_PHBL[phbl-style<br/>Integration]
+    end
+
+    subgraph "Future: Zen 6+"
+        OPENSIL[AMD openSIL<br/>Open Source]
+        FUTURE[Future Projects<br/>Direct integration]
+    end
+
+    V3_AGESA --> V3_PHBL
+    OPENSIL --> FUTURE
+
+    Note1[V3000 uses binary AGESA<br/>openSIL supports Zen 6+]
+
+    classDef current fill:#c8e6c9,stroke:#2e7d32
+    classDef future fill:#e1bee7,stroke:#7b1fa2
+
+    class V3_AGESA,V3_PHBL current
+    class OPENSIL,FUTURE future
+```
+
+---
+
+## 11. Complete Development Workflow
+
+### 11.1 From Analysis to Hardware Boot
+
+```mermaid
+flowchart TB
+    subgraph "Phase 1: Analysis"
+        DUMP[Dump V3000 Firmware]
+        ANALYZE[Analyze with PSPTool]
+        EXTRACT[Extract Addresses<br/>& Configuration]
+    end
+
+    subgraph "Phase 2: Development"
+        FORK[Fork Oxide Repos]
+        CONFIG[Create V3000 Config]
+        BUILD[Build Bootloader]
+        QEMU[Test in QEMU]
+    end
+
+    subgraph "Phase 3: Integration"
+        BLOBS[Obtain AMD Blobs<br/>PSP, AGESA, APCB]
+        IMAGE[Build Flash Image]
+        FLASH[Flash to SolidRun]
+    end
+
+    subgraph "Phase 4: Validation"
+        SERIAL[Serial Console Debug]
+        ITERATE[Iterate & Fix]
+        BOOT[Boot to U-Boot]
+    end
+
+    DUMP --> ANALYZE
+    ANALYZE --> EXTRACT
+    EXTRACT --> CONFIG
+
+    FORK --> CONFIG
+    CONFIG --> BUILD
+    BUILD --> QEMU
+
+    QEMU --> IMAGE
+    BLOBS --> IMAGE
+    IMAGE --> FLASH
+
+    FLASH --> SERIAL
+    SERIAL --> ITERATE
+    ITERATE --> BOOT
+
+    classDef analysis fill:#e3f2fd,stroke:#1565c0
+    classDef dev fill:#e8f5e9,stroke:#2e7d32
+    classDef integrate fill:#fff3e0,stroke:#e65100
+    classDef validate fill:#f3e5f5,stroke:#6a1b9a
+
+    class DUMP,ANALYZE,EXTRACT analysis
+    class FORK,CONFIG,BUILD,QEMU dev
+    class BLOBS,IMAGE,FLASH integrate
+    class SERIAL,ITERATE,BOOT validate
+```
+
+---
+
+## Summary
+
+These diagrams now include:
+
+1. **Original diagrams** (sections 1-7) - System architecture, boot sequence, memory layout
+2. **Analysis workflow** (section 8) - PSPTool integration, CPUID detection, pin mux
+3. **Reference sources** (section 9) - Coreboot Rembrandt, 3mdeb, PSPReverse
+4. **Future architecture** (section 10) - openSIL timeline and strategy
+5. **Complete workflow** (section 11) - End-to-end development process
+
+Key insights integrated from community research:
+- **Explicit pin mux required** (issue phbl#48)
+- **Processor generation detection** with specific bits
+- **APCB structure variations** between generations
+- **PSPTool as primary analysis tool**
+- **Coreboot Rembrandt as architecture reference**
+- **openSIL future path** (V3000 uses binary AGESA)

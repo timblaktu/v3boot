@@ -17,7 +17,8 @@ Minimal Rust bootloader for AMD Ryzen Embedded V3000 (V3C18I) platform, followin
 |----------|-------------|
 | [NDA_INDEPENDENT_WORK_PLAN.md](NDA_INDEPENDENT_WORK_PLAN.md) | Actionable implementation plan (85-90% completable without NDA) |
 | [PLATFORM_COMPARISON.md](PLATFORM_COMPARISON.md) | EPYC vs V3000 architecture analysis |
-| [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) | Visual system documentation |
+| [ARCHITECTURE_DIAGRAMS.md](ARCHITECTURE_DIAGRAMS.md) | Visual system documentation (20+ Mermaid diagrams) |
+| [COMMUNITY_INSIGHTS.md](COMMUNITY_INSIGHTS.md) | GitHub forks, issues, ecosystem research |
 
 ### Reference Documents
 
